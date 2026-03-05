@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'users',
     'rooms',
     'bookings',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -152,3 +153,5 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
 }
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
