@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg
+*.egg-info/
+.Python
+build/
+dist/
+venv/
+env/
+pip-wheel-cache/
+.venv/
+bin/
+parts/
+sdist/
+var/
+
+# Django
+*.log
+*.sqlite3
+local_settings.py
+media/
+
+# IDE/Editor-specific files (customize as needed)
+.vscode/
+.idea/
+.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
