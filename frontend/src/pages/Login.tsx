@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../contexts/AuthContext';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'O usuário é obrigatório'),
@@ -69,6 +70,16 @@ export function Login() {
             {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+
+        <div className="mt-6 text-center border-t border-slate-700 pt-6">
+          <p className="text-slate-400 text-sm">
+            Não tem uma conta?{' '}
+            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors">
+              Cadastre-se
+            </Link>
+          </p>
+        </div>
+
       </div>
     </div>
   );
