@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, DoorOpen, Calendar, Clock } from 'lucide-react';
+import { Users, DoorOpen, Calendar, Clock, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +15,7 @@ export interface Room {
 export function Dashboard() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     // Query das salas
     const { data: rooms, isLoading, isError } = useQuery<Room[]>({
@@ -25,18 +26,36 @@ export function Dashboard() {
         }
     });
 
-    // Query ds reservas
+    // Query das reservas
     const { data: bookings, isLoading: isLoadingBookings } = useQuery({
         queryKey: ['bookings'],
         queryFn: async () => {
             const response = await api.get('/bookings/');
-            return response.data;
+            return response.data.filter((b: any) => b.status !== 'CANCELED');
         }
     });
 
+    // Cancelar Reserva
+    const cancelBookingMutation = useMutation({
+        mutationFn: async (bookingId: string) => {
+            await api.post(`/bookings/${bookingId}/cancel/`);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
+        },
+        onError: () => {
+            alert('Não foi possível cancelar a reserva. Tente novamente.');
+        }
+    });
+
+    const handleCancelClick = (bookingId: string) => {
+        if (window.confirm('Tem certeza que deseja cancelar esta reunião? A sala ficará livre para outras pessoas.')) {
+            cancelBookingMutation.mutate(bookingId);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-900 p-8 text-white">
-            {/* Header */}
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-10 border-b border-slate-700 pb-6">
                     <h1 className="text-3xl font-bold text-emerald-400">Salas Disponíveis</h1>
@@ -53,7 +72,6 @@ export function Dashboard() {
                     </div>
                 </div>
 
-                {/* Tratamento de Estados das Salas */}
                 {isLoading && (
                     <div className="flex items-center justify-center py-20">
                         <p className="text-slate-400 animate-pulse text-xl">Buscando salas...</p>
@@ -66,7 +84,6 @@ export function Dashboard() {
                     </div>
                 )}
 
-                {/* Grid de Salas */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rooms?.map((room) => (
                         <div key={room.id} className="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-emerald-500 transition-colors group">
@@ -94,15 +111,14 @@ export function Dashboard() {
                     ))}
                 </div>
 
-                {/* Empty State das Salas */}
                 {rooms?.length === 0 && !isLoading && (
                     <div className="text-center text-slate-500 mt-20 p-10 border border-dashed border-slate-700 rounded-xl">
                         <DoorOpen size={48} className="mx-auto mb-4 opacity-50" />
                         <p className="text-xl">Nenhuma sala cadastrada ainda.</p>
+                        <p className="text-sm mt-2">Acesse o Swagger e cadastre uma sala para testar.</p>
                     </div>
                 )}
 
-                {/* Seção de Reservas Ativas */}
                 <div className="mt-16">
                     <div className="flex items-center gap-3 mb-6 border-b border-slate-700 pb-4">
                         <Calendar className="text-emerald-400" size={28} />
@@ -119,7 +135,7 @@ export function Dashboard() {
                                 </div>
                             ) : (
                                 bookings?.map((booking: any) => (
-                                    <div key={booking.id} className="bg-slate-800 border-l-4 border-emerald-500 rounded-lg p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg hover:bg-slate-700/50 transition-colors">
+                                    <div key={booking.id} className="bg-slate-800 border-l-4 border-emerald-500 rounded-lg p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg hover:bg-slate-700/50 transition-colors group">
                                         
                                         <div className="flex-1">
                                             <h3 className="text-xl font-bold text-white mb-1">{booking.title}</h3>
@@ -128,28 +144,39 @@ export function Dashboard() {
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center gap-6 text-slate-300 bg-slate-900/50 px-4 py-3 rounded-lg">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Início</span>
-                                                <div className="flex items-center gap-2">
-                                                    <Clock size={16} className="text-emerald-500" />
-                                                    <span className="font-medium">
-                                                        {format(parseISO(booking.start_at), "dd 'de' MMM, HH:mm", { locale: ptBR })}
-                                                    </span>
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-6 text-slate-300 bg-slate-900/50 px-4 py-3 rounded-lg">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Início</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock size={16} className="text-emerald-500" />
+                                                        <span className="font-medium">
+                                                            {format(parseISO(booking.start_at), "dd 'de' MMM, HH:mm", { locale: ptBR })}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="w-px h-8 bg-slate-700 hidden md:block"></div>
+                                                
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Término</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock size={16} className="text-red-400" />
+                                                        <span className="font-medium">
+                                                            {format(parseISO(booking.end_at), "dd 'de' MMM, HH:mm", { locale: ptBR })}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            
-                                            <div className="w-px h-8 bg-slate-700 hidden md:block"></div>
-                                            
-                                            <div className="flex flex-col">
-                                                <span className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Término</span>
-                                                <div className="flex items-center gap-2">
-                                                    <Clock size={16} className="text-red-400" />
-                                                    <span className="font-medium">
-                                                        {format(parseISO(booking.end_at), "dd 'de' MMM, HH:mm", { locale: ptBR })}
-                                                    </span>
-                                                </div>
-                                            </div>
+
+                                            <button
+                                                onClick={() => handleCancelClick(booking.id)}
+                                                disabled={cancelBookingMutation.isPending}
+                                                className="p-3 bg-slate-900/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                                title="Cancelar Reunião"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
                                         </div>
 
                                     </div>
