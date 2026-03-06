@@ -13,7 +13,7 @@ class BookingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Booking.objects.all().order_by('-start_at')
+        return Booking.objects.filter(user=self.request.user).order_by('-start_at')
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
