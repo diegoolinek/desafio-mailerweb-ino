@@ -67,9 +67,13 @@ docker-compose exec backend python manage.py createsuperuser
 ---
 ## Como Rodar os Testes
 O backend possui uma suíte de testes garantindo as regras de negócio.
-- Para rodar os testes, execute:
+- Para rodar os testes do backend, execute:
 ```
 docker-compose exec backend pytest -v
+```
+- Para rodar os testes do frontend, execute:
+```
+docker-compose exec frontend npm run test
 ```
 
 ---
