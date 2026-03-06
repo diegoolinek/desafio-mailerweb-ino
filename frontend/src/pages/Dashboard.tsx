@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, DoorOpen, Calendar, Clock, Trash2, Edit } from 'lucide-react';
+import { Users, DoorOpen, Calendar, Clock, Trash2, Edit, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -17,7 +18,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Query das salas
+  const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
+
   const { data: rooms, isLoading, isError } = useQuery<Room[]>({
     queryKey: ['rooms'],
     queryFn: async () => {
@@ -26,7 +28,6 @@ export function Dashboard() {
     }
   });
 
-  // Query das reservas
   const { data: bookings, isLoading: isLoadingBookings } = useQuery({
     queryKey: ['bookings'],
     queryFn: async () => {
@@ -35,27 +36,32 @@ export function Dashboard() {
     }
   });
 
-  // Cancelar Reserva
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       await api.post(`/bookings/${bookingId}/cancel/`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      setBookingToDelete(null);
     },
     onError: () => {
       alert('Não foi possível cancelar a reserva. Tente novamente.');
+      setBookingToDelete(null);
     }
   });
 
   const handleCancelClick = (bookingId: string) => {
-    if (window.confirm('Tem certeza que deseja cancelar esta reunião? A sala ficará livre para outras pessoas.')) {
-      cancelBookingMutation.mutate(bookingId);
+    setBookingToDelete(bookingId);
+  };
+
+  const confirmCancellation = () => {
+    if (bookingToDelete) {
+      cancelBookingMutation.mutate(bookingToDelete);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 p-8 text-white">
+    <div className="min-h-screen bg-slate-900 p-8 text-white relative">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10 border-b border-slate-700 pb-6">
           <h1 className="text-3xl font-bold text-emerald-400">Salas Disponíveis</h1>
@@ -180,8 +186,7 @@ export function Dashboard() {
 
                         <button
                           onClick={() => handleCancelClick(booking.id)}
-                          disabled={cancelBookingMutation.isPending}
-                          className="p-3 bg-slate-900/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-3 bg-slate-900/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                           title="Cancelar Reunião"
                         >
                           <Trash2 size={20} />
@@ -195,8 +200,41 @@ export function Dashboard() {
             </div>
           )}
         </div>
-
       </div>
+
+      {bookingToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-500/10 text-red-400 rounded-full">
+                <AlertTriangle size={28} />
+              </div>
+              <h3 className="text-2xl font-bold text-white">Cancelar Reunião</h3>
+            </div>
+
+            <p className="text-slate-300 mb-8 leading-relaxed">
+              Tem certeza que deseja cancelar esta reserva? A sala ficará livre para outras pessoas e essa ação não poderá ser desfeita.
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setBookingToDelete(null)}
+                disabled={cancelBookingMutation.isPending}
+                className="px-5 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors font-medium disabled:opacity-50"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={confirmCancellation}
+                disabled={cancelBookingMutation.isPending}
+                className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-500 text-white transition-colors font-bold flex items-center gap-2 disabled:opacity-50"
+              >
+                {cancelBookingMutation.isPending ? 'Cancelando...' : 'Sim, Cancelar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
